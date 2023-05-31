@@ -1,0 +1,17 @@
+  - name: Download Nextflow
+    get_url: 
+      url: "https://get.nextflow.io"
+      dest: "/usr/local/bin/nextflow"
+      mode: 775
+  
+  - name: Install NextFlow
+    become: no
+    ansible.builtin.shell: 
+      cmd: "nextflow"
+      chdir: ~/
+
+  - name: Install Tower Agent
+    get_url: 
+      url: "https://github.com/seqeralabs/tower-agent/releases/latest/download/tw-agent-linux-x86_64"
+      dest: "{{ tower_agent_location }}"
+      mode: 755

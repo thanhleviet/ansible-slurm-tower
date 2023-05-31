@@ -1,0 +1,66 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+
+    - name: Install just the executable
+      ansible.builtin.include_role:
+        name: mambaorg.micromamba
+
+    - name: Create condauser
+      ansible.builtin.user:
+        name: condauser
+
+    - name: Copy lockfile
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/conda-linux-64.lock"
+        dest: "/home/condauser/conda-linux-64.lock"
+        mode: "644"
+
+    - name: Create user-based prefix at /home/condauser/micromamba-test
+      ansible.builtin.include_role:
+        name: mambaorg.micromamba
+      vars:
+        ansible_user: condauser
+        root_prefix: ~/micromamba-test
+        root_prefix_condarc:
+          channels:
+            - conda-forge
+        file: /home/condauser/conda-linux-64.lock
+
+    - name: Test /home/condauser/micromamba-test
+      ansible.builtin.import_tasks: tasks/test-prefix.yml
+      vars:
+        user: condauser
+        prefix: ~/micromamba-test
+        test_command: s3fs --version
+
+    - name: Create a prefix, install packages, create .condarc in /opt/conda
+      ansible.builtin.include_role:
+        name: mambaorg.micromamba
+      vars:
+        root_prefix: /opt/conda
+        packages:
+          - s3fs-fuse
+        root_prefix_condarc:
+          channels:
+            - conda-forge
+          show_channel_urls: true
+
+    - name: Workaround for mamba-org/mamba#1139
+    # https://github.com/mamba-org/mamba/issues/1139
+      ansible.builtin.file:
+        path: /opt/conda/etc/profile.d
+        state: directory
+        mode: "u+rwx,g+rx,o+rx"
+
+    - name: Create condauser
+      ansible.builtin.user:
+        name: condauser2
+
+    - name: Test /opt/conda
+      ansible.builtin.include_tasks: tasks/test-prefix.yml
+      vars:
+        user: condauser2
+        prefix: /opt/conda
+        test_command: s3fs --version

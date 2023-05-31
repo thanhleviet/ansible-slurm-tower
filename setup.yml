@@ -1,0 +1,113 @@
+---
+- hosts: all
+  become: yes
+  pre_tasks:
+  
+  # - name: Print ansible_facts
+  #   debug:
+  #     var: ansible_facts
+  #   tags: debug
+
+  # - name: Print amount of memory
+  #   debug:
+  #     msg: "Host {{ inventory_hostname }} has {{ ansible_facts.memory_mb.nocache.free }}"
+  #   tags: debug
+
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+      cache_valid_time: 86400 #One day
+
+  - name: Install dependencies
+    package:
+      name: ['build-essential',
+             'libseccomp-dev',
+             'libglib2.0-dev',
+             'pkg-config',
+             'squashfs-tools',
+             'cryptsetup',
+             'runc',
+             'openjdk-11-jre-headless',
+             'apt-transport-https',
+             'ca-certificates',
+             'curl',
+             'software-properties-common',
+             'python3-pip',
+             'virtualenv',
+             'python3-setuptools'
+             ]
+  vars:
+    miniconda_prefix: /opt/miniconda3
+    path_extra_conda: "{{ miniconda_prefix }}/extra_conda_pkgs"
+    miniconda_python_version: 310
+    miniconda_version: "23.3.1-0"
+    miniconda_installer: Miniconda3-py{{ miniconda_python_version }}_{{ miniconda_version }}-Linux-x86_64.sh
+    miniconda_installer_checksum: ""
+    miniconda_update_conda: False
+    miniconda_env: ""
+    miniconda_manage_dependencies: True
+    miniconda_env_create_opts: '-q'
+    miniconda_env_update_opts: ''
+    docker_user: ubuntu
+
+    # slurm
+    slurm_roles: ['controller', 'exec']
+    slumr_partition_name: "main"
+    # micromba
+    dest: /usr/local/bin/micromamba
+    root_prefix: ~/micromamba
+    root_prefix_condarc:
+      channels:
+        - conda-forge
+        - bioconda
+        - default
+        - r
+    packages:
+      - s3fs-fuse
+    # singularity
+    singularity_version: 3.10.0
+    # Tower agent location
+    tower_agent_location: /usr/local/bin/tw-agent
+
+  roles:
+    - role: mambaorg.micromamba
+    - role: galaxyproject.slurm
+    - role: stuvusit.systemd-timesyncd
+      timesync_timezone: Europe/London
+      timesync_ntp_hosts:
+      - ntp1.nbi.ac.uk
+      - ntp2.nbi.ac.uk
+  tasks:
+  - name: Install conda
+    include: 'install-conda.yml'
+    tags: conda
+
+  - name: Install docker
+    include: 'install-docker.yml'
+    tags: docker
+
+  - name: Install docker
+    include: 'install-singularity.yml'
+    tags: singularity
+
+  - name: Install nextflow and tower agent
+    include: 'install-nextflow-tower.yml'
+    tags: singularity
+
+  - name: Test slurm
+    command: srun hostname
+    register: hostname
+
+  - name: Print slurm srun
+    debug: 
+      var: hostname.stdout
+  
+  - name: Verify slurm
+    debug:
+     msg: "PASSED"
+    when: hostname.stdout == ansible_facts.hostname
+
+  # - name: Create TMUX session
+  #   become: no
+  #   command: tmux new-session -d -s tower
+  #   tags: tmux

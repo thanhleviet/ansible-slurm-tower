@@ -1,0 +1,6 @@
+- name: mambaorg.micromamba
+  src: https://github.com/mamba-org/ansible-role-micromamba
+  version: ea6e907
+- src: galaxyproject.slurm
+  version: 1.0.2
+- src: stuvusit.systemd-timesyncd

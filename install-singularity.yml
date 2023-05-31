@@ -1,0 +1,7 @@
+- name: Download singularity-CE
+  get_url:
+    url: "https://github.com/sylabs/singularity/releases/download/v{{ singularity_version }}/singularity-ce_{{ singularity_version }}-{{ ansible_distribution_release }}_amd64.deb"
+    dest: /opt/singularity-ce.deb
+
+- name: Install singularity-CE
+  apt: deb=/opt/singularity-ce.deb
